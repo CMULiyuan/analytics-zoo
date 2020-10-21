@@ -22,7 +22,6 @@ import com.intel.analytics.zoo.pipeline.api.keras.ZooSpecHelper
 import jep.NDArray
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SparkConf, SparkContext}
-import com.intel.analytics.zoo.pipeline.inference.{InferenceModel, AbstractModel, FloatModel}
 
 @PythonInterpreterTest
 class TorchModelSpec extends ZooSpecHelper{
