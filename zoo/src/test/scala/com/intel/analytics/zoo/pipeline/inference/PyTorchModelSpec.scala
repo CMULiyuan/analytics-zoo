@@ -21,12 +21,13 @@ import java.nio.file.{Files, Paths}
 
 import com.intel.analytics.bigdl.tensor.Tensor
 import com.intel.analytics.zoo.common.Utils
+import com.intel.analytics.zoo.pipeline.api.keras.ZooSpecHelper
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, FunSuite, Matchers}
 
 import scala.language.postfixOps
 import sys.process._
 
-/*
+
 
 class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
   with InferenceSupportive {
@@ -90,5 +91,20 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
     threads.foreach(_.join())
   }
 
+  test("pytorch model should be loaded with new pickle module") {
+    val PyTorchModel = ModelLoader.loadFloatModelForPyTorch(modelPath)
+    PyTorchModel.evaluate()
+    val metaModel = makeMetaModel(PyTorchModel)
+    val floatFromPyTorch = new FloatModel(PyTorchModel, metaModel, true)
+    println(floatFromPyTorch)
+    floatFromPyTorch shouldNot be(null)
+
+    val modelBytes = Files.readAllBytes(Paths.get(modelPath))
+    val PyTorchModel2 = ModelLoader.loadFloatModelForPyTorch(modelBytes)
+    PyTorchModel2.evaluate()
+    val metaModel2 = makeMetaModel(PyTorchModel2)
+    val floatFromPyTorch2 = new FloatModel(PyTorchModel2, metaModel2, true)
+    println(floatFromPyTorch2)
+    floatFromPyTorch2 shouldNot be(null)
+  }
 }
-*/
