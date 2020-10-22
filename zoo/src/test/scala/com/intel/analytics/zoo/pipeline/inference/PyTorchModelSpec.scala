@@ -40,6 +40,7 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
   var model2: InferenceModel = _
   val currentNum = 10
   var modelPath: String = _
+  var modelPathMulti: String = _
 
   override def beforeAll()  {
     tmpDir = Utils.createTmpDir("ZooVino").toFile()
@@ -49,6 +50,7 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
     s"ls -alh $dir" !;
 
     modelPath = s"$dir/pytorch-resnet.pt"
+    modelPathMulti = s"$dir/pytorch-resnet-second.pt"
     model = new InferenceModel(currentNum) { }
     model2 = new InferenceModel(currentNum) { }
   }
@@ -98,6 +100,13 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
     val floatFromPyTorch = new FloatModel(PyTorchModel, metaModel, true)
     println(floatFromPyTorch)
     floatFromPyTorch shouldNot be(null)
+    // multi model test
+    val PyTorchModel3 = ModelLoader.loadFloatModelForPyTorch(modelPathMulti)
+    PyTorchModel3.evaluate()
+    val metaModel3 = makeMetaModel(PyTorchModel3)
+    val floatFromPyTorch3 = new FloatModel(PyTorchModel3, metaModel3, true)
+    println(floatFromPyTorch3)
+    floatFromPyTorch3 shouldNot be(null)
 
     val modelBytes = Files.readAllBytes(Paths.get(modelPath))
     val PyTorchModel2 = ModelLoader.loadFloatModelForPyTorch(modelBytes)
@@ -106,5 +115,13 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
     val floatFromPyTorch2 = new FloatModel(PyTorchModel2, metaModel2, true)
     println(floatFromPyTorch2)
     floatFromPyTorch2 shouldNot be(null)
+    // multi model test
+    val modelBytes2 = Files.readAllBytes(Paths.get(modelPathMulti))
+    val PyTorchModel4 = ModelLoader.loadFloatModelForPyTorch(modelBytes2)
+    PyTorchModel4.evaluate()
+    val metaModel4 = makeMetaModel(PyTorchModel4)
+    val floatFromPyTorch4 = new FloatModel(PyTorchModel4, metaModel4, true)
+    println(floatFromPyTorch4)
+    floatFromPyTorch4 shouldNot be(null)
   }
 }
