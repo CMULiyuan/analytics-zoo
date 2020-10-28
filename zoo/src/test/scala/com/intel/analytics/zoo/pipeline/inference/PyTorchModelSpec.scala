@@ -28,6 +28,7 @@ import scala.language.postfixOps
 import sys.process._
 
 
+@PythonInterpreterTest
 class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
   with InferenceSupportive {
 
