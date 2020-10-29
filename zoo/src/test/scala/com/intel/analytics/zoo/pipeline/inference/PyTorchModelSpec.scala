@@ -22,6 +22,7 @@ import java.nio.file.{Files, Paths}
 import com.intel.analytics.bigdl.tensor.Tensor
 import com.intel.analytics.zoo.common.Utils
 import com.intel.analytics.zoo.pipeline.api.keras.ZooSpecHelper
+import com.intel.analytics.zoo.common.{PythonInterpreter, PythonInterpreterTest}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, FunSuite, Matchers}
 
 import scala.language.postfixOps
