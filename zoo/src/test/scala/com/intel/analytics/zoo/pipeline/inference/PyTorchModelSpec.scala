@@ -21,9 +21,12 @@ import java.nio.file.{Files, Paths}
 
 import com.intel.analytics.bigdl.tensor.Tensor
 import com.intel.analytics.zoo.common.Utils
-import com.intel.analytics.zoo.pipeline.api.keras.ZooSpecHelper
-import com.intel.analytics.zoo.common.{PythonInterpreter, PythonInterpreterTest}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, FunSuite, Matchers}
+import com.intel.analytics.zoo.common.{PythonInterpreter, PythonInterpreterTest}
+import com.intel.analytics.zoo.core.TFNetNative
+import com.intel.analytics.zoo.pipeline.api.keras.ZooSpecHelper
+import com.intel.analytics.zoo.pipeline.api.net.TorchModel
+import org.apache.log4j.{Level, Logger}
 
 import scala.language.postfixOps
 import sys.process._
@@ -35,33 +38,36 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
 
   // val s3Url = "https://s3-ap-southeast-1.amazonaws.com"
   // val s3DataUrl = s"$s3Url" + s"/analytics-zoo-models"
-  // // val modelURL = "https://download.pytorch.org/models/resnet50-19c8e357.pth"
-  // $s3DataUrl/pytorch/pytorch-resnet.pt"
-  // // val modelMultiURL = "https://download.pytorch.org/models/resnet101-5d3b4d8f.pth"
+  // val modelURL = s"$s3DataUrl/pytorch/pytorch-resnet.pt"
   var tmpDir: File = _
   var model: InferenceModel = _
   var model2: InferenceModel = _
   val currentNum = 10
   var modelPath: String = _
   var modelPathMulti: String = _
+//  var tmpname: String = _
+//  var tmpnameMulti: String = _
 
   override def beforeAll()  {
-    tmpDir = Utils.createTmpDir("ZooVino").toFile()
-    //
-    val dir = new File(s"${tmpDir.getAbsolutePath}/PyTorchModelSpec").getCanonicalPath
+    // tmpDir = Utils.createTmpDir("ZooVino").toFile()
+    // val dir = new File(s"${tmpDir.getAbsolutePath}/PyTorchModelSpec").getCanonicalPath
     // s"wget -nv -P $dir $modelURL" !;
-    // s"wget -nv -P $dir $modelMultiURL" !;
-    // s"ls -alh $dir" !;
-    println("load model two sucessfully")
-    // println(tmpDir)
 
-    modelPath = s"/home/manfei/manfei/scalaTest/model/resnet50.pt"// s"$dir/resnet50-19c8e357.pth"
-    modelPathMulti = s"/home/manfei/manfei/scalaTest/model/resnet101.pt"
+    // s"ls -alh $dir" !;
+
+    // modelPath = s"$dir/pytorch-resnet.pt"
+    // get model path from model
+    println("before get path")
+    if (System.getenv("PYTHONHOME") == null) {
+      println("not define PYTHONHOME")
+    }
+    println("after check the python home")
+
+//     modelPath = "/home/manfei/manfei/scalaTest/model/resnet50.pt"
+//     modelPathMulti = "/home/manfei/manfei/scalaTest/model/resnet101.pt"
+    // println("give the value to the variable")
     model = new InferenceModel(currentNum) { }
     model2 = new InferenceModel(currentNum) { }
-    println(modelPath)
-    println(modelPathMulti)
-    println("done beforeAll")
   }
 
   override def afterAll() {
@@ -71,6 +77,51 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
   }
 
   test("pytorch model should be loaded") {
+    println("initial the tmpname two")
+    val tmpname = ZooSpecHelper.createTmpFile().getAbsolutePath()
+    val tmpnameMulti = ZooSpecHelper.createTmpFile().getAbsolutePath()
+    val resnetModel =
+      s"""
+         |import torch
+         |import torchvision.models as models
+         |from zoo.pipeline.api.torch import zoo_pickle_module
+         |
+         |model = models.resnet50(pretrained = True)
+         |print("after load model and before save the model's path")
+         |torch.save(model, "$tmpname", pickle_module=zoo_pickle_module)
+         |print("before model two")
+         |modelMulti = models.resnet101(pretrained = True)
+         |print("before save model two")
+         |torch.save(modelMulti, "$tmpnameMulti", pickle_module=zoo_pickle_module)
+         |print("after model code")
+         |print("before load model")
+         |""".stripMargin
+//      s"""
+//         |tmpname = "/home/manfei/manfei/scalaTest/model/resnet50.pt"
+//         |tmpnameMulti = "/home/manfei/manfei/scalaTest/model/resnet101.pt"
+//         |""".stripMargin
+    println("create the code and before exacute the code")
+    PythonInterpreter.exec(null)
+    PythonInterpreter.exec(resnetModel)
+    println("after exacute the model")
+
+    modelPath = tmpname
+    modelPathMulti = tmpnameMulti
+
+    println("test load model directly")
+    val modelone = TorchModel.loadModel(modelPath)
+    // val modeltwo = models.resnet101(pretrained = True)
+    println("load one")
+    // modelone.evaluate()
+    val PyTorchModel = ModelLoader.loadFloatModelForPyTorch(modelPath)
+    println("load two")
+    PyTorchModel.evaluate()
+    val metaModel = makeMetaModel(PyTorchModel)
+    val floatFromPyTorch = new FloatModel(PyTorchModel, metaModel, true)
+    println(floatFromPyTorch)
+    floatFromPyTorch shouldNot be(null)
+
+    println("start test 1")
     model.doLoadPyTorch(modelPath)
     println(model)
     model shouldNot be(null)
@@ -102,12 +153,16 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
     threads.foreach(_.join())
   }
 
-  test("pytorch model should be loaded with new pickle module") {
+  test("pytorch model can be loaded with new pickle module") {
+    // val inputTensor = Tensor[Float](1, 3, 224, 224).rand()
+    // val results = model.doPredict(inputTensor)
     println("start test")
-    // test in multi threads type
     val threads = List.range(0, currentNum).map(i => {
       new Thread() {
         override def run(): Unit = {
+          // val r = model.doPredict(inputTensor)
+          // println(r)
+          // r should be (results)
           println("before load model")
           val PyTorchModel = ModelLoader.loadFloatModelForPyTorch(modelPath)
           println("load model as TorchModel successfully")
@@ -137,7 +192,6 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
           println(floatFromPyTorch2)
           floatFromPyTorch2 shouldNot be(null)
 
-
           // multi model test
           println("before load fourth model")
           val modelBytes2 = Files.readAllBytes(Paths.get(modelPathMulti))
@@ -147,11 +201,16 @@ class PyTorchModelSpec extends FunSuite with Matchers with BeforeAndAfterAll
           val floatFromPyTorch4 = new FloatModel(PyTorchModel4, metaModel4, true)
           println(floatFromPyTorch4)
           floatFromPyTorch4 shouldNot be(null)
+
+//          println(currentNum)
+//          val r2 = model2.doPredict(inputTensor)
+//          println(r2)
+//          r2 should be (results)
         }
       }
     })
-
     threads.foreach(_.start())
     threads.foreach(_.join())
   }
+
 }
