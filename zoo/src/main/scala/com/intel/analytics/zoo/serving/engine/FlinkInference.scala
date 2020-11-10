@@ -18,6 +18,7 @@ package com.intel.analytics.zoo.serving.engine
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
+import java.lang
 
 import com.intel.analytics.bigdl.tensor.Tensor
 import com.intel.analytics.zoo.pipeline.inference.InferenceModel
@@ -37,24 +38,29 @@ class FlinkInference(params: SerParams)
 
   override def open(parameters: Configuration): Unit = {
     logger = Logger.getLogger(getClass)
-
-    if (ModelHolder.model == null) {
-      ModelHolder.synchronized {
-        if (ModelHolder.model == null) {
-          val localModelDir = getRuntimeContext.getDistributedCache
-            .getFile(Conventions.SERVING_MODEL_TMP_DIR).getPath
-          val localConfPath = getRuntimeContext.getDistributedCache
-            .getFile(Conventions.SERVING_CONF_TMP_PATH).getPath
-          logger.info(s"Config parameters loaded at executor at path ${localConfPath}, " +
-            s"Model loaded at executor at path ${localModelDir}")
-          val helper = new ClusterServingHelper(localConfPath, localModelDir)
-          helper.initArgs()
-          ModelHolder.model = helper.loadInferenceModel()
+    try{
+      if (ModelHolder.model == null) {
+        ModelHolder.synchronized {
+          if (ModelHolder.model == null) {
+            val localModelDir = getRuntimeContext.getDistributedCache
+              .getFile(Conventions.SERVING_MODEL_TMP_DIR).getPath
+            val localConfPath = getRuntimeContext.getDistributedCache
+              .getFile(Conventions.SERVING_CONF_TMP_PATH).getPath
+            logger.info(s"Config parameters loaded at executor at path ${localConfPath}, " +
+              s"Model loaded at executor at path ${localModelDir}")
+            val helper = new ClusterServingHelper(localConfPath, localModelDir)
+            helper.initArgs()
+            ModelHolder.model = helper.loadInferenceModel()
+          }
         }
       }
+      inference = new ClusterServingInference(new PreProcessing(params.chwFlag),
+        params.modelType, params.filter, params.coreNum, params.resize)
     }
-    inference = new ClusterServingInference(new PreProcessing(params.chwFlag),
-      params.modelType, params.filter, params.coreNum, params.resize)
+    catch{
+      case e: Exception => println(e)
+        throw new Error("Model loading failed")
+    }
   }
 
   override def map(in: List[(String, String)]): List[(String, String)] = {
